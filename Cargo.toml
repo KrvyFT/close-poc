@@ -1,0 +1,11 @@
+[package]
+name = "close-poc"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+serde = "*"
+serde_derive = "*"
+serde_json = "*"
+# serde_with = { version = "*", features = ["base64"] }
+# tokio = { version = "1", features = ["full"] }
