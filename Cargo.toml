@@ -9,3 +9,5 @@ serde_derive = "*"
 serde_json = "*"
 # serde_with = { version = "*", features = ["base64"] }
 # tokio = { version = "1", features = ["full"] }
+reqwest = { version = "*", features = ["json"] }
+tokio = { version = "*", features = ["full"] }

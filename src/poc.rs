@@ -2,14 +2,14 @@ use std::error::Error;
 
 use serde_derive::{Deserialize, Serialize};
 
-#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Serialize, Deserialize, Debug, PartialEq)]
 pub struct Poc {
     pub name: String,
     pub requests: Requests,
     pub response: Response,
 }
 
-#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Serialize, Deserialize, Debug, PartialEq)]
 pub struct Requests {
     pub method: Method,
     pub payload: String,
@@ -19,35 +19,44 @@ pub struct Requests {
     pub filelocate: String,
 }
 
-#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Serialize, Deserialize, Debug, PartialEq)]
 pub struct Headers {
     #[serde(rename = "User-Agent")]
     pub user_agent: String,
 }
 
-#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Serialize, Deserialize, Debug, PartialEq)]
 pub struct Response {
     pub status_code: u16,
     pub text: String,
 }
 
-#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Serialize, Deserialize, Debug, PartialEq)]
 pub enum Method {
     GET,
     POST,
 }
 
-#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Serialize, Deserialize, Debug, PartialEq)]
 pub struct Pocs(Vec<Poc>);
+impl Pocs {
+    pub fn from_json(path: &str) -> Result<Pocs, Box<dyn Error>> {
+        let file = std::fs::File::open(path)?;
+        let poc = serde_json::from_reader(file)?;
+        Ok(poc)
+    }
 
-pub fn from_json(path: &str) -> Result<Pocs, Box<dyn Error>> {
-    let file = std::fs::File::open(path)?;
-    let poc = serde_json::from_reader(file)?;
-    Ok(poc)
+    pub fn to_json(&self) -> Result<String, std::io::Error> {
+        Ok(serde_json::to_string(&self)?)
+    }
 }
 
-pub fn to_json(soc: Pocs) -> Result<String, std::io::Error> {
-    Ok(serde_json::to_string(&soc)?)
+impl Iterator for Pocs {
+    type Item = Poc;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.0.pop()
+    }
 }
 
 #[cfg(test)]
