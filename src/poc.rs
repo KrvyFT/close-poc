@@ -1,5 +1,6 @@
 use std::error::Error;
 
+use reqwest::header::{HeaderMap, HeaderName, HeaderValue};
 use serde_derive::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
@@ -14,6 +15,8 @@ pub struct Requests {
     pub method: Method,
     pub payload: String,
     pub headers: Headers,
+    #[serde(default)]
+    pub data: String,
     pub dnslog: bool,
     pub sqltime: bool,
     pub filelocate: String,
@@ -23,8 +26,51 @@ pub struct Requests {
 pub struct Headers {
     #[serde(rename = "User-Agent")]
     pub user_agent: String,
+    #[serde(default, rename = "Connection")]
+    pub connection: String,
+    #[serde(default, rename = "Content-Type")]
+    pub content_type: String,
+    #[serde(default, rename = "X-Requested-With")]
+    pub x_requested_with: String,
+    #[serde(default, rename = "Accept")]
+    pub accept: String,
+    #[serde(default, rename = "Accept-Encoding")]
+    pub accept_encoding: String,
+    #[serde(default, rename = "Accept-Language")]
+    pub accept_language: String,
 }
 
+impl Headers {
+    pub fn to_maps(&self) -> HeaderMap {
+        let mut headers = HeaderMap::new();
+        if let Ok(user_agent) = HeaderValue::from_str(&self.user_agent) {
+            headers.insert(HeaderName::from_static("User-Agent"), user_agent);
+        }
+        if let Ok(connection) = HeaderValue::from_str(&self.connection) {
+            headers.insert(HeaderName::from_static("Connection"), connection);
+        }
+        if let Ok(content_type) = HeaderValue::from_str(&self.content_type) {
+            headers.insert(HeaderName::from_static("Content-Type"), content_type);
+        }
+        if let Ok(x_requested_with) = HeaderValue::from_str(&self.x_requested_with) {
+            headers.insert(
+                HeaderName::from_static("X-requested-with"),
+                x_requested_with,
+            );
+        }
+        if let Ok(accept) = HeaderValue::from_str(&self.accept) {
+            headers.insert(HeaderName::from_static("accept"), accept);
+        }
+        if let Ok(accept_encoding) = HeaderValue::from_str(&self.accept_encoding) {
+            headers.insert(HeaderName::from_static("accept-encoding"), accept_encoding);
+        }
+        if let Ok(accept_language) = HeaderValue::from_str(&self.accept_language) {
+            headers.insert(HeaderName::from_static("accept-language"), accept_language);
+        }
+
+        headers
+    }
+}
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
 pub struct Response {
     pub status_code: u16,
@@ -38,7 +84,7 @@ pub enum Method {
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
-pub struct Pocs(Vec<Poc>);
+pub struct Pocs(pub Vec<Poc>);
 impl Pocs {
     pub fn from_json(path: &str) -> Result<Pocs, Box<dyn Error>> {
         let file = std::fs::File::open(path)?;
@@ -71,7 +117,8 @@ mod tests {
         #[test]
         fn test_poc_serialization_and_deserialization() {
             // 读取 poc.json 文件
-            let json_content = fs::read_to_string("src/poc.json").expect("Unable to read poc.json");
+            let json_content =
+                fs::read_to_string("testdata/get.json").expect("Unable to read poc.json");
 
             // 反序列化 JSON 内容到 Poc 结构体
             let poc: Pocs =
@@ -84,7 +131,7 @@ mod tests {
             // 反序列化回 Poc 结构体以验证
             let deserialized_poc: Pocs =
                 serde_json::from_str(&serialized_poc).expect("Failed to deserialize JSON to Poc");
-
+            println!("{:#?}", deserialized_poc);
             // 验证原始 Poc 和反序列化后的 Poc 是否相同
             assert_eq!(poc, deserialized_poc);
         }
