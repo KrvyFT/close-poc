@@ -23,7 +23,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_read_from_file() {
-        let urls = read_from_file("src/sr.txt").await.unwrap();
+        let urls = read_from_file("testdata/sr.txt").await.unwrap();
         print!("{:?}", urls)
     }
 }
