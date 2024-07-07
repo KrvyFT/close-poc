@@ -1,16 +1,19 @@
 use std::error::Error;
 
-use reqwest::header::{HeaderMap, HeaderName, HeaderValue};
+use reqwest::header::{
+    HeaderMap, HeaderName, HeaderValue, ACCEPT, ACCEPT_ENCODING, ACCEPT_LANGUAGE, CONNECTION,
+    CONTENT_TYPE, USER_AGENT,
+};
 use serde_derive::{Deserialize, Serialize};
 
-#[derive(Serialize, Deserialize, Debug, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
 pub struct Poc {
     pub name: String,
     pub requests: Requests,
     pub response: Response,
 }
 
-#[derive(Serialize, Deserialize, Debug, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
 pub struct Requests {
     pub method: Method,
     pub payload: String,
@@ -22,62 +25,62 @@ pub struct Requests {
     pub filelocate: String,
 }
 
-#[derive(Serialize, Deserialize, Debug, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
 pub struct Headers {
     #[serde(rename = "User-Agent")]
     pub user_agent: String,
-    #[serde(default, rename = "Connection")]
-    pub connection: String,
-    #[serde(default, rename = "Content-Type")]
-    pub content_type: String,
-    #[serde(default, rename = "X-Requested-With")]
-    pub x_requested_with: String,
     #[serde(default, rename = "Accept")]
     pub accept: String,
     #[serde(default, rename = "Accept-Encoding")]
     pub accept_encoding: String,
     #[serde(default, rename = "Accept-Language")]
     pub accept_language: String,
+    #[serde(default, rename = "Connection")]
+    pub connection: String,
+    #[serde(default, rename = "Content-Type")]
+    pub content_type: String,
+    #[serde(default, rename = "X-Requested-With")]
+    pub x_requested_with: String,
 }
 
 impl Headers {
     pub fn to_maps(&self) -> HeaderMap {
         let mut headers = HeaderMap::new();
         if let Ok(user_agent) = HeaderValue::from_str(&self.user_agent) {
-            headers.insert(HeaderName::from_static("User-Agent"), user_agent);
-        }
-        if let Ok(connection) = HeaderValue::from_str(&self.connection) {
-            headers.insert(HeaderName::from_static("Connection"), connection);
-        }
-        if let Ok(content_type) = HeaderValue::from_str(&self.content_type) {
-            headers.insert(HeaderName::from_static("Content-Type"), content_type);
-        }
-        if let Ok(x_requested_with) = HeaderValue::from_str(&self.x_requested_with) {
-            headers.insert(
-                HeaderName::from_static("X-requested-with"),
-                x_requested_with,
-            );
+            headers.insert(USER_AGENT, user_agent);
         }
         if let Ok(accept) = HeaderValue::from_str(&self.accept) {
-            headers.insert(HeaderName::from_static("accept"), accept);
+            headers.insert(ACCEPT, accept);
         }
         if let Ok(accept_encoding) = HeaderValue::from_str(&self.accept_encoding) {
-            headers.insert(HeaderName::from_static("accept-encoding"), accept_encoding);
+            headers.insert(ACCEPT_ENCODING, accept_encoding);
         }
         if let Ok(accept_language) = HeaderValue::from_str(&self.accept_language) {
-            headers.insert(HeaderName::from_static("accept-language"), accept_language);
+            headers.insert(ACCEPT_LANGUAGE, accept_language);
         }
+        if let Ok(connection) = HeaderValue::from_str(&self.connection) {
+            headers.insert(CONNECTION, connection);
+        }
+        if let Ok(content_type) = HeaderValue::from_str(&self.content_type) {
+            headers.insert(CONTENT_TYPE, content_type);
+        }
+        // if let Ok(x_requested_with) = HeaderValue::from_str(&self.x_requested_with) {
+        // headers.insert(
+        // .
+        // x_requested_with,
+        // );
+        // }
 
         headers
     }
 }
-#[derive(Serialize, Deserialize, Debug, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
 pub struct Response {
     pub status_code: u16,
     pub text: String,
 }
 
-#[derive(Serialize, Deserialize, Debug, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
 pub enum Method {
     GET,
     POST,
