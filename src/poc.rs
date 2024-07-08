@@ -102,7 +102,7 @@ impl Poc {
     pub async fn req_get(&self, url: &str) -> Result<String, reqwest::Error> {
         let res = reqwest::Client::builder()
             .danger_accept_invalid_certs(true)
-            // .proxy(reqwest::Proxy::all("http://127.0.0.1:8080")?)
+            .proxy(reqwest::Proxy::all("http://127.0.0.1:8080")?)
             .build()?;
         let full_url = format!("http://{}{}", url, self.requests.payload);
         let resp = res
@@ -119,7 +119,7 @@ impl Poc {
     pub async fn req_post(&self, url: &str) -> Result<String, reqwest::Error> {
         let res = reqwest::Client::builder()
             .danger_accept_invalid_certs(true)
-            // .proxy(reqwest::Proxy::all("http://127.0.0.1:8080")?)
+            .proxy(reqwest::Proxy::all("http://127.0.0.1:8080")?)
             .build()?;
         let full_url = format!("http://{}{}", url, self.requests.payload);
         let resp = res
