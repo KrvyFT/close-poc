@@ -1,8 +1,14 @@
-use std::error::Error;
+use std::{error::Error, sync::Arc};
+
+use reqwest::{header::HOST, Response as ReqwestResponse};
+use tokio::{
+    task::{self, JoinSet},
+    time::Duration,
+};
 
 use reqwest::header::{
-    HeaderMap, HeaderName, HeaderValue, ACCEPT, ACCEPT_ENCODING, ACCEPT_LANGUAGE, CONNECTION,
-    CONTENT_TYPE, USER_AGENT,
+    HeaderMap, HeaderValue, ACCEPT, ACCEPT_ENCODING, ACCEPT_LANGUAGE, CONNECTION, CONTENT_TYPE,
+    USER_AGENT,
 };
 use serde_derive::{Deserialize, Serialize};
 
@@ -64,16 +70,10 @@ impl Headers {
         if let Ok(content_type) = HeaderValue::from_str(&self.content_type) {
             headers.insert(CONTENT_TYPE, content_type);
         }
-        // if let Ok(x_requested_with) = HeaderValue::from_str(&self.x_requested_with) {
-        // headers.insert(
-        // .
-        // x_requested_with,
-        // );
-        // }
-
         headers
     }
 }
+
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
 pub struct Response {
     pub status_code: u16,
@@ -86,10 +86,8 @@ pub enum Method {
     POST,
 }
 
-#[derive(Serialize, Deserialize, Debug, PartialEq)]
-pub struct Pocs(pub Vec<Poc>);
-impl Pocs {
-    pub fn from_json(path: &str) -> Result<Pocs, Box<dyn Error>> {
+impl Poc {
+    pub fn from_json(path: &str) -> Result<Poc, Box<dyn Error>> {
         let file = std::fs::File::open(path)?;
         let poc = serde_json::from_reader(file)?;
         Ok(poc)
@@ -98,45 +96,84 @@ impl Pocs {
     pub fn to_json(&self) -> Result<String, std::io::Error> {
         Ok(serde_json::to_string(&self)?)
     }
-}
 
-impl Iterator for Pocs {
-    type Item = Poc;
+    pub async fn req_get(&self, url: &str) -> Result<String, Box<dyn Error>> {
+        let res = reqwest::Client::builder()
+            .danger_accept_invalid_certs(true)
+            .proxy(reqwest::Proxy::all("http://127.0.0.1:8080")?)
+            .build()?;
+        let full_url = format!("http://{}{}", url, self.requests.payload);
+        let resp = res
+            .get(full_url)
+            .header(HOST, url)
+            .headers(self.requests.headers.to_maps())
+            .timeout(Duration::from_secs(3))
+            .send()
+            .await?;
 
-    fn next(&mut self) -> Option<Self::Item> {
-        self.0.pop()
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[cfg(test)]
-    mod tests {
-        use super::*;
-        use std::fs;
-
-        #[test]
-        fn test_poc_serialization_and_deserialization() {
-            // 读取 poc.json 文件
-            let json_content =
-                fs::read_to_string("testdata/get.json").expect("Unable to read poc.json");
-
-            // 反序列化 JSON 内容到 Poc 结构体
-            let poc: Pocs =
-                serde_json::from_str(&json_content).expect("Failed to deserialize JSON to Poc");
-
-            // 序列化 Poc 结构体到 JSON 字符串
-            let serialized_poc =
-                serde_json::to_string(&poc).expect("Failed to serialize Poc to JSON");
-
-            // 反序列化回 Poc 结构体以验证
-            let deserialized_poc: Pocs =
-                serde_json::from_str(&serialized_poc).expect("Failed to deserialize JSON to Poc");
-            println!("{:#?}", deserialized_poc);
-            // 验证原始 Poc 和反序列化后的 Poc 是否相同
-            assert_eq!(poc, deserialized_poc);
+        if !self.is_exist(resp).await {
+            return Ok(format!("EXIST: {}", url));
         }
+
+        Ok(format!("Finished: {}", url))
+    }
+
+    pub async fn req_post(&self, url: &str) -> Result<String, Box<dyn Error>> {
+        let res = reqwest::Client::builder()
+            .danger_accept_invalid_certs(true)
+            .proxy(reqwest::Proxy::all("http://127.0.0.1:8080")?)
+            .build()?;
+        let full_url = format!("http://{}{}", url, self.requests.payload);
+        let resp = res
+            .post(full_url)
+            .header(HOST, url)
+            .headers(self.requests.headers.to_maps())
+            .body(self.requests.data.clone())
+            .timeout(Duration::from_secs(3))
+            .send()
+            .await?;
+
+        if !self.is_exist(resp).await {
+            return Ok(format!("EXIST: {}", url));
+        }
+
+        Ok(format!("Finished: {}", url))
+    }
+
+    async fn is_exist(&self, resp: ReqwestResponse) -> bool {
+        if resp.status() == self.response.status_code
+            && resp.text().await.unwrap().find(&self.response.text) != None
+        {
+            false
+        } else {
+            true
+        }
+    }
+
+    pub async fn check_vulnerabilitie(&self, url: Arc<String>) -> Result<String, Box<dyn Error>> {
+        let result = match self.requests.method {
+            crate::poc::Method::GET => self.req_get(&url).await?,
+            crate::poc::Method::POST => self.req_post(&url).await?,
+        };
+        Ok(result)
+    }
+
+    pub fn check_all_vulnerabilities(
+        self,
+        urls: Vec<Arc<String>>,
+    ) -> JoinSet<Result<(), task::JoinError>> {
+        let mut join_set = JoinSet::new();
+        let arcs = Arc::new(self.clone());
+        for url in urls {
+            let handle_self = arcs.clone();
+            join_set.spawn(task::spawn(async move {
+                match handle_self.check_vulnerabilitie(url.clone()).await {
+                    Ok(s) => println!("{s}"),
+                    Err(e) => print!("{:#?}\n", e),
+                }
+            }));
+        }
+
+        join_set
     }
 }
