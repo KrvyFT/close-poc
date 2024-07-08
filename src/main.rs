@@ -1,20 +1,17 @@
-use poc::Pocs;
-use urls::read_from_file;
+use app::{app, run};
 
+mod app;
 mod handle;
 mod poc;
 mod urls;
 
 #[tokio::main(worker_threads = 128)]
 async fn main() {
-    let pocs = Pocs::from_json("testdata/get.json").unwrap();
-    let urls = read_from_file("testdata/sr.txt").await.unwrap();
-
-    let poc = pocs.0.get(0).unwrap();
-    let mut join_set = poc.clone().check_all_vulnerabilities(urls);
+    let mut join_set = run(app()).await;
     while let Some(result) = join_set.join_next().await {
         match result {
-            Ok(_) => continue,
+            Ok(Ok(())) => println!("",),
+            Ok(Err(e)) => println!("{:#?}", e),
             Err(e) => println!("Task panicked: {:?}", e),
         }
     }
