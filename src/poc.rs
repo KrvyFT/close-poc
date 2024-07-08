@@ -1,6 +1,6 @@
 use std::{io, sync::Arc};
 
-use ansi_term::{Color, Style};
+use ansi_term::Color;
 
 use reqwest::{header::HOST, Response as ReqwestResponse};
 use tokio::{
