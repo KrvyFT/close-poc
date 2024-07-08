@@ -1,7 +1,6 @@
 use app::{app, run};
 
 mod app;
-mod handle;
 mod poc;
 mod urls;
 
