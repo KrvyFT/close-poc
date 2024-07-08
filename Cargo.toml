@@ -11,3 +11,9 @@ serde_json = "*"
 reqwest = { version = "*", features = ["json"] }
 tokio = { version = "*", features = ["full"] }
 clap = "*"
+ansi_term = "0.12.1"
+
+
+[profile.release]
+opt-level = 3
+lto = true

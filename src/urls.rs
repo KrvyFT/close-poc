@@ -1,8 +1,8 @@
-use std::{error::Error, path::Path, sync::Arc};
+use std::{io, path::Path, sync::Arc};
 
 use tokio::{fs::File, io::AsyncReadExt};
 
-pub async fn read_from_file(path: &str) -> Result<Vec<Arc<String>>, Box<dyn Error>> {
+pub async fn read_from_file(path: &str) -> Result<Vec<Arc<String>>, io::Error> {
     let mut url = Vec::new();
     let path = Path::new(path);
 

@@ -39,7 +39,7 @@ pub fn app() -> (String, String) {
     }
 }
 
-pub async fn run(path: (String, String)) -> JoinSet<Result<(), JoinError>> {
+pub async fn run(path: (String, String)) -> JoinSet<Result<String, JoinError>> {
     let poc = crate::poc::Poc::from_json(&path.0).unwrap();
     let urls = crate::urls::read_from_file(&path.1).await.unwrap();
 

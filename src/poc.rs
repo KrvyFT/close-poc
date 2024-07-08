@@ -1,4 +1,6 @@
-use std::{error::Error, sync::Arc};
+use std::{io, sync::Arc};
+
+use ansi_term::{Color, Style};
 
 use reqwest::{header::HOST, Response as ReqwestResponse};
 use tokio::{
@@ -87,20 +89,20 @@ pub enum Method {
 }
 
 impl Poc {
-    pub fn from_json(path: &str) -> Result<Poc, Box<dyn Error>> {
+    pub fn from_json(path: &str) -> Result<Poc, io::Error> {
         let file = std::fs::File::open(path)?;
         let poc = serde_json::from_reader(file)?;
         Ok(poc)
     }
 
-    pub fn to_json(&self) -> Result<String, std::io::Error> {
+    pub fn _to_json(&self) -> Result<String, std::io::Error> {
         Ok(serde_json::to_string(&self)?)
     }
 
-    pub async fn req_get(&self, url: &str) -> Result<String, Box<dyn Error>> {
+    pub async fn req_get(&self, url: &str) -> Result<String, reqwest::Error> {
         let res = reqwest::Client::builder()
             .danger_accept_invalid_certs(true)
-            .proxy(reqwest::Proxy::all("http://127.0.0.1:8080")?)
+            // .proxy(reqwest::Proxy::all("http://127.0.0.1:8080")?)
             .build()?;
         let full_url = format!("http://{}{}", url, self.requests.payload);
         let resp = res
@@ -111,17 +113,13 @@ impl Poc {
             .send()
             .await?;
 
-        if !self.is_exist(resp).await {
-            return Ok(format!("EXIST: {}", url));
-        }
-
-        Ok(format!("Finished: {}", url))
+        Ok(self.is_exist(resp, url).await)
     }
 
-    pub async fn req_post(&self, url: &str) -> Result<String, Box<dyn Error>> {
+    pub async fn req_post(&self, url: &str) -> Result<String, reqwest::Error> {
         let res = reqwest::Client::builder()
             .danger_accept_invalid_certs(true)
-            .proxy(reqwest::Proxy::all("http://127.0.0.1:8080")?)
+            // .proxy(reqwest::Proxy::all("http://127.0.0.1:8080")?)
             .build()?;
         let full_url = format!("http://{}{}", url, self.requests.payload);
         let resp = res
@@ -133,24 +131,28 @@ impl Poc {
             .send()
             .await?;
 
-        if !self.is_exist(resp).await {
-            return Ok(format!("EXIST: {}", url));
-        }
-
-        Ok(format!("Finished: {}", url))
+        Ok(self.is_exist(resp, url).await)
     }
 
-    async fn is_exist(&self, resp: ReqwestResponse) -> bool {
+    async fn is_exist(&self, resp: ReqwestResponse, url: &str) -> String {
         if resp.status() == self.response.status_code
             && resp.text().await.unwrap().find(&self.response.text) != None
         {
-            false
+            return format!(
+                "{}{}",
+                Color::Green.bold().paint("EXIST: "),
+                Color::Green.bold().paint(url)
+            );
         } else {
-            true
+            return format!(
+                "{}{}",
+                Color::Yellow.bold().paint("Finished: "),
+                Color::Yellow.bold().paint(url)
+            );
         }
     }
 
-    pub async fn check_vulnerabilitie(&self, url: Arc<String>) -> Result<String, Box<dyn Error>> {
+    pub async fn check_vulnerabilitie(&self, url: Arc<String>) -> Result<String, reqwest::Error> {
         let result = match self.requests.method {
             crate::poc::Method::GET => self.req_get(&url).await?,
             crate::poc::Method::POST => self.req_post(&url).await?,
@@ -161,15 +163,29 @@ impl Poc {
     pub fn check_all_vulnerabilities(
         self,
         urls: Vec<Arc<String>>,
-    ) -> JoinSet<Result<(), task::JoinError>> {
+    ) -> JoinSet<Result<String, task::JoinError>> {
         let mut join_set = JoinSet::new();
         let arcs = Arc::new(self.clone());
         for url in urls {
             let handle_self = arcs.clone();
             join_set.spawn(task::spawn(async move {
                 match handle_self.check_vulnerabilitie(url.clone()).await {
-                    Ok(s) => println!("{s}"),
-                    Err(e) => print!("{:#?}\n", e),
+                    Ok(s) => format!("{s}"),
+                    Err(e) => {
+                        if e.is_timeout() {
+                            return format!(
+                                "{}{}",
+                                Color::Red.bold().paint("Timeout occurred for URL: "),
+                                Color::Red.bold().paint(url.as_str())
+                            );
+                        } else {
+                            return format!(
+                                "{}{}",
+                                Color::Red.bold().paint("Error occurred for URL: "),
+                                Color::Red.bold().paint(url.as_str())
+                            );
+                        }
+                    }
                 }
             }));
         }
